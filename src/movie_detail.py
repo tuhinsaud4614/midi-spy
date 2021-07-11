@@ -28,6 +28,16 @@ def get_credits(sel):
     return temp
 
 
+def get_photos(sel):
+    temp = []
+    for p in sel:
+        img_tag = p.find("img")
+        if img_tag and img_tag.get("srcset"):
+            temp.append([e.strip() for e in re.findall(
+                r'(.*?)[0-9]+w,?', img_tag.get("srcset"))])
+    return temp
+
+
 def get_casts(sel):
     temp = []
     if len(sel):
@@ -97,9 +107,11 @@ def get_production_companies(sel):
                     link_text = a.get("href")
                     id = re.findall(r".*\/company\/(.*)\?.*", link_text)
                     if text and len(id):
-                        a_tags.append({"id": id[0], "name": text.strip().lower()})
+                        a_tags.append(
+                            {"id": id[0], "name": text.strip().lower()})
             return a_tags if len(a_tags) else None
     return None
+
 
 def get_world_gross(sel):
     if sel:
@@ -112,6 +124,7 @@ def get_world_gross(sel):
                     return text.strip().replace(",", "")
     return None
 
+
 def get_tech_spec(sel):
     a_tags = sel.find_all("a")
     if len(a_tags):
@@ -123,12 +136,17 @@ def get_tech_spec(sel):
         return data if len(data) else None
     return None
 
+
 movie = dict()
 
 title_selector = soup.find(
     'h1', attrs={'data-testid': "hero-title-block__title"})
 img_selector = soup.find(
     'div', attrs={'data-testid': "hero-media__poster"}).find("img")
+
+photos_selector = soup.find_all(
+    "div", attrs={'class': "ipc-photo__photo-image"})
+
 runtime = soup.find(
     'li', attrs={'data-testid': 'title-techspec_runtime'}).select("span")
 release_year = soup.find(
@@ -136,6 +154,10 @@ release_year = soup.find(
 genres = soup.find('div', attrs={'data-testid': 'genres'}).select("span")
 credits = soup.find_all(
     'li', attrs={'data-testid': 'title-pc-principal-credit'})
+ratings_select = soup.find('div', attrs={
+                           'data-testid': "hero-rating-bar__aggregate-rating__score"}).select("span")[0]
+votes_select = soup.find(
+    'div', attrs={'class': "AggregateRatingButton__TotalRatingAmount-sc-1ll29m0-3"})
 
 directors = credits[0].find_all("a")
 writers = credits[1].find_all("a")
@@ -163,6 +185,12 @@ sound_mix_selectors = soup.find(
 
 movie["title"] = title_selector.get_text().strip().lower()
 movie["img"] = img_selector.get("src") if img_selector else None
+movie["photos"] = get_photos(photos_selector)
+movie["ratings"] = {
+    "value": ratings_select.get_text().strip(
+    ).lower(),
+    "votes": votes_select.get_text().strip().lower()
+}
 if len(runtime) == 2 and runtime[0].get_text().strip().lower() == "runtime":
     movie["runtime"] = runtime[1].get_text().strip()
 movie["release_year"] = release_year.find("a").get_text().strip()
@@ -174,9 +202,10 @@ movie["release_date"] = get_release_date(release_date_selectors)
 movie["country_of_origins"] = get_detail(country_of_origin_selectors)
 movie["languages"] = get_detail(languages_selectors)
 movie["filming_locations"] = get_filming_locations(filming_locations_selectors)
-movie["production_companies"] = get_production_companies(production_companines_selectors)
+movie["production_companies"] = get_production_companies(
+    production_companines_selectors)
 movie["gross_world_wide"] = get_world_gross(gross_world_wide_selectors)
-movie["tech_spec"] = {"color": get_tech_spec(color_selectors), "sound_mix": get_tech_spec(sound_mix_selectors)}
-# print(movie)
+movie["tech_spec"] = {"color": get_tech_spec(
+    color_selectors), "sound_mix": get_tech_spec(sound_mix_selectors)}
 with open("movie.json", "w") as f:
     json.dump(movie, f, indent=2)
