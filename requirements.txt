@@ -1,4 +1,4 @@
-autopep8==1.5.7
+autopep3==1.5.7
 beautifulsoup4==4.9.3
 certifi==2021.5.30
 chardet==4.0.0
