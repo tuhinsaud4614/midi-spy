@@ -1,8 +1,9 @@
+from unittest import async_case, result
 import requests
 import re
 import json
 from datetime import datetime
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping, Optional, Text, Union
 from requests.models import Response
 from bs4 import BeautifulSoup
 
@@ -28,9 +29,12 @@ class Movie:
     origins: Optional[list[str]] = None
     languages: Optional[list[str]] = None
     filming_locations: Optional[list[str]] = None
+    official_sites: Optional[list[dict[str, str]]] = None
     production_companies: Optional[list[dict[str, str]]] = None
     worldwide_gross: Optional[float] = None
-    tech_spec: Optional[dict[str, list[str]]]
+    tech_spec: Optional[dict[str, list[str]]] = None
+    taglines: Optional[list[str]] = None
+    storyline: Optional[str] = None
 
     def __init__(self, url: str) -> Union[None, CrawlingError]:
         """This will take url (String as argument)"""
@@ -78,12 +82,19 @@ class Movie:
         self.filming_locations = self._get_filming_locations()
         # Production companies of the movie
         self.production_companies = self._get_production_companies()
+        # Official sites of the movie
+        self.official_sites = self._get_official_sites()
         # Worldwide gross of the movie
         self.worldwide_gross = self._get_worldwide_gross()
         # Technical specifications of the movie
         color = self._get_tech_spec('li[data-testid="title-techspec_color"] a')
-        sound_mix = self._get_tech_spec('li[data-testid="title-techspec_soundmix"] a')
+        sound_mix = self._get_tech_spec(
+            'li[data-testid="title-techspec_soundmix"] a')
         self.tech_spec = {"color": color, "sound_mix": sound_mix}
+        # Taglines of the movie
+        self.taglines = self._get_taglines()
+        # Storyline of the movie
+        self.storyline = self._get_storyline()
 
     def to_json(self) -> Mapping[str, Any]:
         """This function converts the class into map"""
@@ -102,10 +113,13 @@ class Movie:
             "origins": self.origins,
             "languages": self.languages,
             "filming_locations": self.filming_locations,
+            "official_sites": self.official_sites,
             "production_companies": self.production_companies,
             "worldwide_gross": self.worldwide_gross,
-            "tech_spec": self.tech_spec
-        }, indent=2, sort_keys=True)
+            "tech_spec": self.tech_spec,
+            "taglines": self.taglines,
+            "storyline": self.storyline
+        }, indent=2, sort_keys=True, ensure_ascii=False)
 
     def _to_text(self, selector: Any) -> str:
         """This will converts selector inner element into text, removing unnecessary character"""
@@ -314,13 +328,31 @@ class Movie:
 
         return tuple(location for location in locations.split(", "))
 
+    # Get official sites of the movie
+    def _get_official_sites(self) -> Optional[list[dict[str, str]]]:
+        """This will find out the official sites of the movie"""
+        tags = self._soup.select(
+            'li[data-testid="title-details-officialsites"] a[class~="ipc-metadata-list-item__list-content-item--link"]')
+
+        if not tags:
+            return None
+
+        result = []
+        for tag in tags:
+            href = tag.get("href")
+            if href:
+                text = self._to_text(tag)
+                if text:
+                    result.append({"name": text, "link": href})
+        return result if result else None
+
     # Get production companies of the movie
     def _get_production_companies(self) -> Optional[list[str]]:
         """This will find out the production companines of the movie"""
         tags = self._soup.select(
             'li[data-testid="title-details-companies"] a[class~="ipc-metadata-list-item__list-content-item--link"]')
         if not tags:
-            None
+            return None
 
         result = []
         for tag in tags:
@@ -363,11 +395,41 @@ class Movie:
                 result.append(text)
         return result if result else None
 
+    # Get taglines of the movie
+    def _get_taglines(self) -> Optional[list[str]]:
+        """This will find out the taglines of the movie"""
 
-try:
-    movie: Movie = Movie("https://m.imdb.com/title/tt8332922/")
-    print(movie.to_json())
-except CrawlingError as err:
-    print(err.message)
-except:
-    print("Unknown Error")
+        tags = self._soup.select(
+            'li[data-testid="storyline-taglines"] span[class="ipc-metadata-list-item__list-content-item"]')
+        if not tags:
+            return None
+        
+        result = []
+        for tag in tags:
+            text = tag.get_text().strip()
+
+            if text:
+                result.append(text)
+        return result if result else None
+
+
+    # Get storyline of the movie
+    def _get_storyline(self) -> Optional[str]:
+        """This will find out the storyline of the movie"""
+
+        tag = self._soup.select_one(
+            'div[data-testid="storyline-plot-summary"] > div > div')
+        if not tag:
+            return None
+
+        result = tag.get_text().strip()
+        return result if result else None
+
+
+# try:
+#     movie: Movie = Movie("https://m.imdb.com/title/tt8332922/")
+#     print(movie.to_json())
+# except CrawlingError as err:
+#     print(err.message)
+# except:
+#     print("Unknown Error")
