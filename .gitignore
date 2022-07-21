@@ -7,3 +7,4 @@ pyvenv.cfg
 .vscode
 __pycache__/
 src/movie.json
+database.db
