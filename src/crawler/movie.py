@@ -6,8 +6,48 @@ from typing import Any, Mapping, Optional, Text, Union
 from requests.models import Response
 from bs4 import BeautifulSoup
 
-from utils.models.error import CrawlingError
-from utils.utils import convert_compact_to_number
+# from ..models.error import CrawlingError
+# from ..utils.root import convert_compact_to_number
+from typing import Optional
+
+
+class CrawlingError(Exception):
+    message: str
+    detail: Optional[str] = None
+
+    def __init__(self, message: str, detail: Optional[str]) -> None:
+        self.message = message
+        self.detail = detail
+        super().__init__(self.message)
+
+
+def convert_compact_to_number(value: str) -> int:
+    "This function converts compact string like (1.2k, 1m, 2B, 2) into number"
+
+    if not value:
+        return 0
+
+    value = value.lower()
+
+    # This will find out int or float from str
+    seperated_number = re.findall(r"[-+]?\d*\.\d+|\d+", value)
+
+    if not seperated_number:
+        return 0
+
+    def pure_int(s: str, multiply: int = 1) -> int:
+        return int(float(s) * multiply)
+
+    seperated_number = seperated_number[0]
+    if "k" in value:
+        return pure_int(seperated_number, 1000)
+    if "m" in value:
+        return pure_int(seperated_number, 1000000)
+    if "b" in value:
+        return pure_int(seperated_number, 1000000000)
+    if "t" in value:
+        return pure_int(seperated_number, 1000000000000)
+    return pure_int(seperated_number)
 
 
 class Movie:
@@ -402,7 +442,7 @@ class Movie:
             'li[data-testid="storyline-taglines"] span[class="ipc-metadata-list-item__list-content-item"]')
         if not tags:
             return None
-        
+
         result = []
         for tag in tags:
             text = tag.get_text().strip()
@@ -411,8 +451,8 @@ class Movie:
                 result.append(text)
         return result if result else None
 
-
     # Get storyline of the movie
+
     def _get_storyline(self) -> Optional[str]:
         """This will find out the storyline of the movie"""
 
@@ -425,10 +465,10 @@ class Movie:
         return result if result else None
 
 
-# try:
-#     movie: Movie = Movie("https://m.imdb.com/title/tt8332922/")
-#     print(movie.to_json())
-# except CrawlingError as err:
-#     print(err.message)
-# except:
-#     print("Unknown Error")
+try:
+    movie: Movie = Movie("https://m.imdb.com/title/tt8332922/")
+    print(movie.to_json())
+except CrawlingError as err:
+    print(err.message)
+except:
+    print("Unknown Error")

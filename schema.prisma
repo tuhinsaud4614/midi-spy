@@ -7,8 +7,35 @@ generator client {
   provider = "prisma-client-py"
 }
 
+model Award {
+  id        String  @id @default(cuid())
+  title     String
+  out_come  String?
+  eventYear Int?
+  category  String?
+  movie     Movie   @relation(fields: [movieId], references: [id])
+  movieId   String
+  writter   Writter @relation(fields: [writterId], references: [id])
+  writterId String
+}
+
+model Writter {
+  id         String    @id @default(cuid())
+  writterId  String    @unique
+  name       String
+  image      String?
+  dob        DateTime?
+  about      String?
+  motherLand String?
+  movies     Movie[]
+  awards     Award[]
+}
+
 model Movie {
-  id    String @id @default(cuid())
-  title String
-  created_at DateTime @default(now())
+  id        String    @id @default(cuid())
+  movieId   String    @unique
+  title     String
+  createdAt DateTime  @default(now())
+  writters  Writter[]
+  awards    Award[]
 }
